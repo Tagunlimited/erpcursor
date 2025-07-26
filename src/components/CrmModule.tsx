@@ -264,7 +264,7 @@ export function CrmModule() {
                   <div>
                     <p className="text-sm font-medium">Lifetime Value</p>
                     <p className="text-lg font-bold text-green-600">
-                      ₹{(customer.totalOrders * 5000).toLocaleString()}
+                      ₹{customer.totalBilledAmount.toLocaleString()}
                     </p>
                   </div>
                 </div>

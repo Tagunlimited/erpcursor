@@ -70,7 +70,7 @@ export function SimplifiedWarehouseMaster() {
     capacity: "",
     manager_name: "",
     manager_contact: "",
-    status: "active" as const
+    status: "active" as 'active' | 'inactive'
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
