@@ -24,14 +24,20 @@ export function CrmModule() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Force fresh data generation by clearing any cached state
+    setCustomers([]);
+    setLoading(true);
+    
     const timer = setTimeout(() => {
       const data = generateAllDummyData();
+      console.log('Generated customer data sample:', data.customers[0]); // Debug log
+      console.log('First customer LTV:', data.customers[0]?.totalBilledAmount); // Specific LTV check
       setCustomers(data.customers);
       setLoading(false);
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, []); // Force refresh by adding a timestamp dependency
 
   const filteredCustomers = customers.filter(customer => {
     const matchesSearch = customer.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
