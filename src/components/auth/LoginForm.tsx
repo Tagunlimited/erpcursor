@@ -1,21 +1,37 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export function LoginForm() {
-  const [email, setEmail] = useState('ecom@tagunlimitedclothing.com');
-  const [password, setPassword] = useState('31Jan@2022');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  // Load remembered email on component mount
+  useEffect(() => {
+    const rememberedEmail = localStorage.getItem('rememberedEmail');
+    const rememberedPassword = localStorage.getItem('rememberedPassword');
+    if (rememberedEmail) {
+      setEmail(rememberedEmail);
+      setRememberMe(true);
+    }
+    if (rememberedPassword) {
+      setPassword(rememberedPassword);
+      setRememberMe(true);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +49,15 @@ export function LoginForm() {
       }
 
       if (data.user) {
+        // Handle remember me functionality
+        if (rememberMe) {
+          localStorage.setItem('rememberedEmail', email);
+          localStorage.setItem('rememberedPassword', password);
+        } else {
+          localStorage.removeItem('rememberedEmail');
+          localStorage.removeItem('rememberedPassword');
+        }
+
         // Check if user is approved (skip for pre-configured admin)
         if (email !== 'ecom@tagunlimitedclothing.com') {
           const { data: profile } = await supabase
@@ -125,6 +150,21 @@ export function LoginForm() {
                   )}
                 </Button>
               </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="rememberMe"
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                disabled={isLoading}
+              />
+              <Label
+                htmlFor="rememberMe"
+                className="text-sm font-normal cursor-pointer"
+              >
+                Remember me
+              </Label>
             </div>
 
             <Button 

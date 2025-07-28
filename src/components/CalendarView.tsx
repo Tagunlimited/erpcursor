@@ -24,7 +24,7 @@ import {
   CalendarDays,
   XCircle
 } from "lucide-react";
-import { generateAllDummyData } from "@/lib/dummyData";
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from "sonner";
 
 interface CalendarEvent {
@@ -62,16 +62,15 @@ export function CalendarView() {
   const [departments, setDepartments] = useState<string[]>([]);
   const [employees, setEmployees] = useState<Array<{id: string, name: string, department: string}>>([]);
   const [filteredEmployees, setFilteredEmployees] = useState<Array<{id: string, name: string, department: string}>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  // Fetch events from Supabase
   useEffect(() => {
-    const generatedData = generateAllDummyData();
-    generateCalendarEvents(generatedData);
-    
-    // Initialize departments and employees
+    fetchEvents();
+    // Initialize departments and employees (static for now)
     const departmentList = ['Production', 'Quality Control', 'Design', 'Management', 'Sales', 'Inventory', 'Export', 'Raw Materials', 'Packaging'];
     setDepartments(departmentList);
-    
-    // Mock employees data
     const employeeList = [
       { id: '1', name: 'John Smith', department: 'Production' },
       { id: '2', name: 'Sarah Johnson', department: 'Production' },
@@ -91,6 +90,43 @@ export function CalendarView() {
     setFilteredEmployees(employeeList);
   }, []);
 
+  const fetchEvents = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data, error } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .order('date', { ascending: true });
+      if (error) throw error;
+      // Group events by date
+      const eventMap: { [key: string]: CalendarEvent[] } = {};
+      data.forEach((event: any) => {
+        const dateKey = new Date(event.date).toDateString();
+        if (!eventMap[dateKey]) eventMap[dateKey] = [];
+        eventMap[dateKey].push({
+          id: event.id,
+          title: event.title,
+          type: event.type,
+          time: event.time,
+          status: event.status,
+          details: event.details,
+          priority: event.priority,
+          department: event.department,
+          assignedTo: event.assigned_to,
+          assignedBy: event.assigned_by,
+          deadline: event.deadline,
+          createdAt: event.created_at,
+        });
+      });
+      setEvents(eventMap);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Filter employees when department changes
   useEffect(() => {
     if (newEvent.department) {
@@ -106,18 +142,85 @@ export function CalendarView() {
     }
   }, [newEvent.department, employees]);
 
-  const handleEventStatusChange = (eventId: string, newStatus: 'completed' | 'cancelled') => {
-    setEvents(prev => {
-      const newEvents = { ...prev };
-      Object.keys(newEvents).forEach(dateKey => {
-        newEvents[dateKey] = newEvents[dateKey].map(event => 
-          event.id === eventId ? { ...event, status: newStatus } : event
-        );
+  // Add event to Supabase
+  const handleAddEvent = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { error } = await supabase.from('calendar_events').insert({
+        title: newEvent.title,
+        type: newEvent.type,
+        time: newEvent.time,
+        status: 'pending',
+        details: newEvent.details,
+        priority: newEvent.priority,
+        department: newEvent.department,
+        assigned_to: newEvent.assignedTo,
+        assigned_by: '',
+        deadline: newEvent.deadline,
+        date: newEvent.date,
       });
-      return newEvents;
-    });
-    setSelectedEvent(null);
-    toast.success(`Task ${newStatus === 'completed' ? 'completed' : 'cancelled'} successfully`);
+      if (error) throw error;
+      toast.success('Event added!');
+      setShowAddEvent(false);
+      setNewEvent({
+        title: '',
+        type: 'task',
+        time: '',
+        details: '',
+        priority: 'medium',
+        department: '',
+        assignedTo: '',
+        deadline: '',
+        date: ''
+      });
+      fetchEvents();
+    } catch (err: any) {
+      setError(err.message);
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update event status in Supabase
+  const handleEventStatusChange = async (eventId: string, newStatus: 'completed' | 'cancelled') => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { error } = await supabase
+        .from('calendar_events')
+        .update({ status: newStatus })
+        .eq('id', eventId);
+      if (error) throw error;
+      toast.success('Event updated!');
+      fetchEvents();
+    } catch (err: any) {
+      setError(err.message);
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Delete event from Supabase
+  const handleDeleteEvent = async (eventId: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { error } = await supabase
+        .from('calendar_events')
+        .delete()
+        .eq('id', eventId);
+      if (error) throw error;
+      toast.success('Event deleted!');
+      fetchEvents();
+    } catch (err: any) {
+      setError(err.message);
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Filter events by status
@@ -136,89 +239,6 @@ export function CalendarView() {
       activeEventsOnly[dateKey] = dayActiveEvents;
     }
   });
-
-  const generateCalendarEvents = (data: any) => {
-    const eventMap: { [key: string]: CalendarEvent[] } = {};
-    const departments = ['Production', 'Quality Control', 'Design', 'Management', 'Sales', 'Inventory', 'Export', 'Raw Materials', 'Packaging'];
-    
-    // Generate events for next 7 days
-    for (let i = 0; i < 7; i++) {
-      const date = new Date();
-      date.setDate(date.getDate() + i);
-      const dateKey = date.toDateString();
-      eventMap[dateKey] = [];
-
-      // Add various types of events with more realistic data
-      const eventTypes = [
-        { type: 'task', titles: ['Quality Check', 'Sewing Line 1', 'Cutting Department', 'Maintenance Check', 'Pattern Making Workshop', 'Packaging & Labeling'] },
-        { type: 'delivery', titles: ['Dye Chemicals Delivery', 'Finished Goods Shipment', 'Trim & Hardware Delivery', 'Export Shipment'] },
-        { type: 'event', titles: ['Design Review Meeting', 'Supplier Audit', 'Production Planning Meeting', 'Client Visit', 'Weekly Performance Review', 'Inventory Audit'] }
-      ];
-
-      // Generate 2-5 events per day
-      const numEvents = Math.floor(Math.random() * 4) + 2;
-      
-      for (let j = 0; j < numEvents; j++) {
-        const eventType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
-        const title = eventType.titles[Math.floor(Math.random() * eventType.titles.length)];
-        const department = departments[Math.floor(Math.random() * departments.length)];
-        const hour = Math.floor(Math.random() * 12) + 1;
-        const minute = Math.random() > 0.5 ? '00' : '30';
-        const ampm = Math.random() > 0.5 ? 'AM' : 'PM';
-        
-        eventMap[dateKey].push({
-          id: `${eventType.type}-${i}-${j}`,
-          title,
-          type: eventType.type as CalendarEvent['type'],
-          time: `${hour.toString().padStart(2, '0')}:${minute} ${ampm}`,
-          status: Math.random() > 0.8 ? 'completed' : Math.random() > 0.6 ? 'confirmed' : 'pending',
-          details: getEventDetails(eventType.type, title),
-          priority: Math.random() > 0.7 ? 'high' : Math.random() > 0.5 ? 'medium' : 'low',
-          department
-        });
-      }
-    }
-
-    setEvents(eventMap);
-  };
-
-  const getEventDetails = (type: string, title: string) => {
-    const details = {
-      task: [
-        'Final quality inspection for summer collection',
-        'Complete 150 t-shirts for Order #MT-2024-003',
-        'Cut 200 pieces for denim jacket production',
-        'Inspect incoming silk fabric shipment',
-        'Review and approve fall collection designs'
-      ],
-      delivery: [
-        'Reactive dyes for next batch coloring',
-        'Ship 500 units to Retailer Network East',
-        'Buttons, zippers, and other hardware items',
-        'Container shipment to European markets'
-      ],
-      event: [
-        'Review and approve fall collection designs',
-        'Annual supplier compliance audit',
-        'Monthly production capacity analysis',
-        'Product showcase and contract discussion',
-        'Weekly production capacity review'
-      ]
-    };
-    
-    const typeDetails = details[type as keyof typeof details] || details.task;
-    return typeDetails[Math.floor(Math.random() * typeDetails.length)];
-  };
-
-  const getNext7Days = () => {
-    const days = [];
-    for (let i = 0; i < 7; i++) {
-      const date = new Date();
-      date.setDate(date.getDate() + i);
-      days.push(date);
-    }
-    return days;
-  };
 
   const getEventColor = (type: string, status: string, priority: string) => {
     if (status === 'completed') return 'bg-green-50 border-l-4 border-l-green-400';
@@ -288,64 +308,15 @@ export function CalendarView() {
     e.preventDefault();
   };
 
-  const handleAddEvent = () => {
-    if (!newEvent.title || !newEvent.date) {
-      toast.error('Please fill in required fields');
-      return;
+  const getNext7Days = () => {
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() + i);
+      days.push(date);
     }
-
-    const dateKey = new Date(newEvent.date).toDateString();
-    const assignedEmployee = employees.find(emp => emp.id === newEvent.assignedTo);
-    
-    const eventToAdd: CalendarEvent = {
-      id: `custom-${Date.now()}`,
-      title: newEvent.title,
-      type: newEvent.type,
-      time: newEvent.time || '09:00 AM',
-      status: 'pending',
-      details: newEvent.details,
-      priority: newEvent.priority,
-      department: newEvent.department,
-      assignedTo: newEvent.assignedTo,
-      assignedBy: 'Current User', // This would be the logged-in user
-      deadline: newEvent.deadline,
-      createdAt: new Date().toISOString()
-    };
-
-    setEvents(prev => ({
-      ...prev,
-      [dateKey]: [...(prev[dateKey] || []), eventToAdd]
-    }));
-
-    // Simulate notification sending
-    if (newEvent.assignedTo && assignedEmployee) {
-      toast.success(`Task assigned to ${assignedEmployee.name} successfully`);
-      // Here you would typically send a real notification
-      console.log(`Notification sent to ${assignedEmployee.name}: New task "${newEvent.title}" assigned`);
-      console.log(`Notification sent to Admin: Task "${newEvent.title}" created and assigned to ${assignedEmployee.name}`);
-    } else {
-      toast.success('Event added successfully');
-    }
-
-    setNewEvent({
-      title: '',
-      type: 'task',
-      time: '',
-      details: '',
-      priority: 'medium',
-      department: '',
-      assignedTo: '',
-      deadline: '',
-      date: ''
-    });
-    
-    setShowAddEvent(false);
+    return days;
   };
-
-  // Calculate summary statistics for active events only
-  const totalActiveItems = activeEvents.length;
-  const highPriorityCount = activeEvents.filter(e => e.priority === 'high').length;
-  const deliveriesCount = activeEvents.filter(e => e.type === 'delivery').length;
 
   const next7Days = getNext7Days();
   const today = new Date().toDateString();
@@ -362,7 +333,7 @@ export function CalendarView() {
               </div>
               <div className="text-left">
                 <div className="text-xs text-muted-foreground">Total Items</div>
-                <div className="text-lg font-bold">{totalActiveItems}</div>
+                <div className="text-lg font-bold">{activeEvents.length}</div>
               </div>
             </TabsTrigger>
             <TabsTrigger value="completed" className="flex items-center gap-2 px-6">
@@ -510,11 +481,11 @@ export function CalendarView() {
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={handleAddEvent} className="flex-1">
-                    Add Event
+                  <Button onClick={handleAddEvent} className="flex-1" disabled={loading}>
+                    {loading ? 'Adding...' : 'Add Event'}
                   </Button>
-                  <Button variant="outline" onClick={() => setShowAddEvent(false)} className="flex-1">
-                    Cancel
+                  <Button variant="outline" onClick={() => setShowAddEvent(false)} className="flex-1" disabled={loading}>
+                    {loading ? 'Cancelling...' : 'Cancel'}
                   </Button>
                 </div>
               </div>
@@ -566,7 +537,15 @@ export function CalendarView() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
-                  {todayEvents.length > 0 ? (
+                  {loading ? (
+                    <div className="text-center py-12">
+                      <p>Loading events...</p>
+                    </div>
+                  ) : error ? (
+                    <div className="text-center py-12 text-red-500">
+                      Error: {error}
+                    </div>
+                  ) : todayEvents.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {todayEvents
                         .sort((a, b) => a.time.localeCompare(b.time))
@@ -824,17 +803,22 @@ export function CalendarView() {
                     variant="outline" 
                     onClick={() => handleEventStatusChange(selectedEvent.id, 'cancelled')}
                     className="flex-1"
+                    disabled={loading}
                   >
-                    Cancel Task
+                    {loading ? 'Cancelling...' : 'Cancel Task'}
                   </Button>
                   <Button 
                     onClick={() => handleEventStatusChange(selectedEvent.id, 'completed')}
                     className="flex-1"
+                    disabled={loading}
                   >
-                    Mark Complete
+                    {loading ? 'Marking...' : 'Mark Complete'}
                   </Button>
                 </div>
               )}
+              <Button variant="outline" onClick={() => handleDeleteEvent(selectedEvent.id)} className="flex-1" disabled={loading}>
+                {loading ? 'Deleting...' : 'Delete Event'}
+              </Button>
             </div>
           )}
         </DialogContent>

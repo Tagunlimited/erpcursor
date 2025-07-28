@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ErpLayout } from '@/components/ErpLayout';
 import { CustomerForm } from '@/components/customers/CustomerForm';
+import { calculateLifetimeValue, formatCurrency } from '@/lib/utils';
 
 interface Customer {
   id: string;
@@ -37,6 +38,10 @@ const CustomerDetailPage = () => {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [showEditForm, setShowEditForm] = useState(false);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -63,6 +68,54 @@ const CustomerDetailPage = () => {
       setLoading(false);
     }
   };
+
+  // Fetch orders for this customer
+  const fetchOrders = async (customerId: string) => {
+    setOrdersLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('customer_id', customerId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setOrders(data || []);
+    } catch (error) {
+      toast.error('Failed to fetch order history');
+      setOrders([]);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  // Fetch invoices for this customer
+  const fetchInvoices = async (customerId: string) => {
+    setInvoicesLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .select('*')
+        .eq('customer_id', customerId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      console.log('Fetched invoices for customer:', customerId, data);
+      setInvoices(data || []);
+    } catch (error) {
+      console.error('Error fetching invoices:', error);
+      toast.error('Failed to fetch invoice history');
+      setInvoices([]);
+    } finally {
+      setInvoicesLoading(false);
+    }
+  };
+
+  // Fetch orders and invoices when customer is loaded
+  useEffect(() => {
+    if (customer?.id) {
+      fetchOrders(customer.id);
+      fetchInvoices(customer.id);
+    }
+  }, [customer?.id]);
 
   const handleFormSave = () => {
     setShowEditForm(false);
@@ -197,7 +250,7 @@ const CustomerDetailPage = () => {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Lifetime Value</p>
-                  <p className="text-2xl font-bold">₹{((customer.total_orders || 0) * 25000).toLocaleString()}</p>
+                  <p className="text-2xl font-bold">₹{formatCurrency(calculateLifetimeValue(invoices, orders))}</p>
                 </div>
               </div>
             </CardContent>
@@ -317,7 +370,57 @@ const CustomerDetailPage = () => {
                 <CardTitle>Order History</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">Order history will be displayed here.</p>
+                {ordersLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : orders.length === 0 ? (
+                  <p className="text-muted-foreground">No orders found for this customer.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead>
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Order #</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                          <th className="px-4 py-2"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {orders.map((order) => (
+                          <tr
+                            key={order.id}
+                            className="hover:bg-gray-50 cursor-pointer"
+                            onClick={() => navigate(`/orders/${order.id}`)}
+                          >
+                            <td className="px-4 py-2 font-mono">{order.order_number}</td>
+                            <td className="px-4 py-2">{order.order_date ? new Date(order.order_date).toLocaleDateString() : '-'}</td>
+                            <td className="px-4 py-2">
+                              <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                                order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                order.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
+                                order.status === 'in_production' ? 'bg-purple-100 text-purple-800' :
+                                order.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {order.status?.replace('_', ' ').toUpperCase()}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2">₹{order.final_amount?.toLocaleString() || '0'}</td>
+                            <td className="px-4 py-2">
+                              <Button size="sm" variant="outline" onClick={e => { e.stopPropagation(); navigate(`/orders/${order.id}`); }}>
+                                View
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -328,7 +431,55 @@ const CustomerDetailPage = () => {
                 <CardTitle>Invoice History</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">Invoice history will be displayed here.</p>
+                {invoicesLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : invoices.length === 0 ? (
+                  <p className="text-muted-foreground">No invoices found for this customer.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead>
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Invoice #</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                          <th className="px-4 py-2"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {invoices.map((invoice) => (
+                          <tr
+                            key={invoice.id}
+                            className="hover:bg-gray-50 cursor-pointer"
+                            onClick={() => navigate(`/accounts/invoices/${invoice.id}`)}
+                          >
+                            <td className="px-4 py-2 font-mono">{invoice.invoice_number}</td>
+                            <td className="px-4 py-2">{invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString() : '-'}</td>
+                            <td className="px-4 py-2">
+                              <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                                invoice.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                invoice.status === 'paid' ? 'bg-green-100 text-green-800' :
+                                invoice.status === 'overdue' ? 'bg-red-100 text-red-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {invoice.status?.replace('_', ' ').toUpperCase()}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2">₹{invoice.total_amount?.toLocaleString() || '0'}</td>
+                            <td className="px-4 py-2">
+                              <Button size="sm" variant="outline" onClick={e => { e.stopPropagation(); navigate(`/accounts/invoices/${invoice.id}`); }}>
+                                View
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

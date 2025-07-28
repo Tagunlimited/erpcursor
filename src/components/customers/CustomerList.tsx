@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { CustomerForm } from './CustomerForm';
+import { calculateLifetimeValue, formatCurrency } from '@/lib/utils';
 
 interface Customer {
   id: string;
@@ -36,6 +37,7 @@ interface Customer {
 export function CustomerList() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
+  const [customerLifetimeValues, setCustomerLifetimeValues] = useState<Record<string, number>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('all');
   const [loading, setLoading] = useState(true);
@@ -62,6 +64,11 @@ export function CustomerList() {
 
       if (error) throw error;
       setCustomers(data || []);
+      
+      // Fetch lifetime values for all customers
+      if (data && data.length > 0) {
+        await fetchCustomerLifetimeValues(data);
+      }
     } catch (error) {
       console.error('Error fetching customers:', error);
       toast({
@@ -71,6 +78,40 @@ export function CustomerList() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCustomerLifetimeValues = async (customerList: Customer[]) => {
+    try {
+      const customerIds = customerList.map(c => c.id);
+      const lifetimeValues: Record<string, number> = {};
+
+      // Fetch invoices for all customers
+      const { data: invoices, error: invoiceError } = await supabase
+        .from('invoices')
+        .select('customer_id, total_amount')
+        .in('customer_id', customerIds);
+
+      if (invoiceError) throw invoiceError;
+
+      // Fetch orders for all customers
+      const { data: orders, error: orderError } = await supabase
+        .from('orders')
+        .select('customer_id, final_amount')
+        .in('customer_id', customerIds);
+
+      if (orderError) throw orderError;
+
+      // Calculate lifetime value for each customer
+      customerIds.forEach(customerId => {
+        const customerInvoices = invoices?.filter(inv => inv.customer_id === customerId) || [];
+        const customerOrders = orders?.filter(ord => ord.customer_id === customerId) || [];
+        lifetimeValues[customerId] = calculateLifetimeValue(customerInvoices, customerOrders);
+      });
+
+      setCustomerLifetimeValues(lifetimeValues);
+    } catch (error) {
+      console.error('Error fetching customer lifetime values:', error);
     }
   };
 
@@ -159,7 +200,7 @@ export function CustomerList() {
 
   const exportCustomers = () => {
     const csvContent = [
-      ['Company Name', 'Contact Person', 'Phone', 'Email', 'Address', 'City', 'State', 'Pincode', 'GSTIN', 'PAN', 'Customer Type', 'Customer Tier', 'Credit Limit', 'Outstanding Amount', 'Total Orders', 'Last Order Date'],
+      ['Company Name', 'Contact Person', 'Phone', 'Email', 'Address', 'City', 'State', 'Pincode', 'GSTIN', 'PAN', 'Customer Type', 'Customer Tier', 'Credit Limit', 'Outstanding Amount', 'Total Orders', 'Last Order Date', 'Lifetime Value'],
       ...filteredCustomers.map(customer => [
         customer.company_name,
         customer.contact_person || '',
@@ -176,7 +217,8 @@ export function CustomerList() {
         customer.credit_limit?.toString() || '0',
         customer.outstanding_amount?.toString() || '0',
         customer.total_orders?.toString() || '0',
-        customer.last_order_date || ''
+        customer.last_order_date || '',
+        customerLifetimeValues[customer.id]?.toString() || '0'
       ])
     ].map(row => row.join(',')).join('\n');
 
@@ -320,91 +362,93 @@ export function CustomerList() {
             </Select>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-2 sm:p-4">
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Company Name</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Credit Limit</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredCustomers.map((customer) => (
-                  <TableRow 
-                    key={customer.id} 
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => navigate(`/crm/customers/${customer.id}`)}
-                  >
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{customer.company_name}</div>
-                        {customer.gstin && (
-                          <div className="text-sm text-muted-foreground">GST: {customer.gstin}</div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="text-sm font-medium">{customer.contact_person}</div>
-                        <div className="text-sm">{customer.phone}</div>
-                        <div className="text-sm text-muted-foreground">{customer.email}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {customer.customer_type || 'Retail'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        <div>{customer.city}</div>
-                        <div className="text-muted-foreground">
-                          {customer.state} - {customer.pincode}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <Badge className="bg-accent text-accent-foreground">
-                          Credit: ₹{customer.credit_limit?.toLocaleString() || '0'}
-                        </Badge>
-                        <div className="text-xs text-muted-foreground">
-                          LTV: ₹{((customer.total_orders || 0) * 5000).toLocaleString()}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(customer)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(customer.id)}
-                          className="text-error hover:text-error"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table className="min-w-[600px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Company Name</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Credit Limit</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredCustomers.map((customer) => (
+                    <TableRow 
+                      key={customer.id} 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => navigate(`/crm/customers/${customer.id}`)}
+                    >
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{customer.company_name}</div>
+                          {customer.gstin && (
+                            <div className="text-sm text-muted-foreground">GST: {customer.gstin}</div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="text-sm font-medium">{customer.contact_person}</div>
+                          <div className="text-sm">{customer.phone}</div>
+                          <div className="text-sm text-muted-foreground">{customer.email}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {customer.customer_type || 'Retail'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <div>{customer.city}</div>
+                          <div className="text-muted-foreground">
+                            {customer.state} - {customer.pincode}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <Badge className="bg-accent text-accent-foreground">
+                            Credit: ₹{customer.credit_limit?.toLocaleString() || '0'}
+                          </Badge>
+                          <div className="text-xs text-muted-foreground">
+                            LTV: ₹{customerLifetimeValues[customer.id]?.toLocaleString() || '0'}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(customer)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(customer.id)}
+                            className="text-error hover:text-error"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

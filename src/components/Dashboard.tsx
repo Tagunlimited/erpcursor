@@ -180,34 +180,38 @@ export function Dashboard() {
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {metrics.map((metric) => (
-          <Card key={metric.title} className="relative overflow-hidden shadow-erp-md hover:shadow-erp-lg transition-all duration-300 hover:scale-105 group">
+        {metrics.map((metric, idx) => (
+          <Card key={metric.title} className={cn(
+            "relative overflow-hidden shadow-erp-md hover:shadow-erp-lg transition-all duration-300 hover:scale-105 group border-0",
+            idx === 0 && "bg-green-100 text-green-900",
+            idx === 1 && "bg-blue-100 text-blue-900",
+            idx === 2 && "bg-yellow-100 text-yellow-900",
+            idx === 3 && "bg-purple-100 text-purple-900"
+          )}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground font-medium">{metric.title}</p>
+                  <p className="text-sm font-medium opacity-90">{metric.title}</p>
                   <p className="text-xl font-bold mt-1">{metric.value}</p>
                   <div className="flex items-center mt-2">
                     {metric.trend === 'up' ? (
-                      <TrendingUp className="w-4 h-4 text-success mr-1" />
+                      <TrendingUp className="w-4 h-4 text-green-600 mr-1" />
                     ) : metric.trend === 'down' ? (
-                      <TrendingDown className="w-4 h-4 text-error mr-1" />
+                      <TrendingDown className="w-4 h-4 text-red-600 mr-1" />
                     ) : null}
                     <span className={cn(
                       "text-sm font-medium",
-                      metric.trend === 'up' ? 'text-success' : 
-                      metric.trend === 'down' ? 'text-error' : 'text-muted-foreground'
+                      metric.trend === 'up' ? 'text-green-700' : 
+                      metric.trend === 'down' ? 'text-red-700' : 'text-gray-700'
                     )}>
                       {metric.change}
                     </span>
                   </div>
                 </div>
-                <div className={cn("p-2 rounded-full bg-muted group-hover:scale-110 transition-transform", metric.color)}>
-                  <metric.icon className="w-5 h-5" />
+                <div className="p-2 rounded-full bg-white/70 group-hover:scale-110 transition-transform">
+                  <metric.icon className="w-5 h-5 text-gray-700" />
                 </div>
               </div>
-              
-              {/* Tooltip on hover */}
               <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg pointer-events-none" />
             </CardContent>
           </Card>
@@ -216,22 +220,28 @@ export function Dashboard() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {quickStats.map((stat) => (
-          <Card key={stat.label} className="shadow-erp-md hover:shadow-erp-lg transition-all duration-300 hover:scale-105">
+        {quickStats.map((stat, idx) => (
+          <Card key={stat.label} className={cn(
+            "shadow-erp-md hover:shadow-erp-lg transition-all duration-300 hover:scale-105 border-0",
+            idx === 0 && "bg-pink-100 text-pink-900",
+            idx === 1 && "bg-indigo-100 text-indigo-900",
+            idx === 2 && "bg-orange-100 text-orange-900",
+            idx === 3 && "bg-red-100 text-red-900"
+          )}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">{stat.label}</p>
+                  <p className="text-sm opacity-90">{stat.label}</p>
                   <p className="text-lg font-bold">{stat.value}</p>
                 </div>
-                <div className={cn("p-2 rounded-lg", stat.color)}>
-                  <stat.icon className="w-5 h-5 text-white" />
+                <div className="p-2 rounded-lg bg-white/70">
+                  <stat.icon className="w-5 h-5 text-gray-700" />
                 </div>
               </div>
               <div className="mt-3">
                 <Progress 
                   value={(stat.value / stat.total) * 100} 
-                  className="h-2"
+                  className="h-2 bg-gray-200"
                 />
               </div>
             </CardContent>

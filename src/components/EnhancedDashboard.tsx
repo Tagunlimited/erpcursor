@@ -331,7 +331,7 @@ export function EnhancedDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent">
             ERP Dashboard
@@ -374,35 +374,38 @@ export function EnhancedDashboard() {
               "grid gap-6",
               dashboardSettings.compactMode ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
             )}>
-              {keyMetrics.map((metric) => (
-                <Card key={metric.title} className="relative overflow-hidden shadow-erp-lg hover:shadow-erp-xl transition-all duration-300 hover:scale-105 group border-0 bg-gradient-to-br from-card to-card/80">
-                  <CardContent className={cn("p-6", dashboardSettings.compactMode && "p-4")}>
+              {keyMetrics.map((metric, idx) => (
+                <Card key={metric.title} className={cn(
+                  "relative overflow-hidden shadow-erp-lg hover:shadow-erp-xl transition-all duration-300 hover:scale-105 group border-0",
+                  idx === 0 && "bg-green-100 text-green-900",
+                  idx === 1 && "bg-blue-100 text-blue-900",
+                  idx === 2 && "bg-yellow-100 text-yellow-900",
+                  idx === 3 && "bg-purple-100 text-purple-900"
+                )}>
+                  <CardContent className={cn("p-6", dashboardSettings.compactMode && "p-4")}> 
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-muted-foreground font-medium">{metric.title}</p>
-                        <p className={cn("font-bold mt-2", dashboardSettings.compactMode ? "text-2xl" : "text-3xl")}>{metric.value}</p>
+                        <p className="text-sm font-medium opacity-90">{metric.title}</p>
+                        <p className={cn("font-bold mt-2 text-3xl")}>{metric.value}</p>
                         <div className="flex items-center mt-3">
                           {metric.trend === 'up' ? (
-                            <TrendingUp className="w-4 h-4 text-success mr-1" />
+                            <TrendingUp className="w-4 h-4 text-green-600 mr-1" />
                           ) : metric.trend === 'down' ? (
-                            <TrendingDown className="w-4 h-4 text-error mr-1" />
+                            <TrendingDown className="w-4 h-4 text-red-600 mr-1" />
                           ) : null}
                           <span className={cn(
                             "text-sm font-medium",
-                            metric.trend === 'up' ? 'text-success' : 
-                            metric.trend === 'down' ? 'text-error' : 'text-muted-foreground'
+                            metric.trend === 'up' ? 'text-green-700' : 
+                            metric.trend === 'down' ? 'text-red-700' : 'text-gray-700'
                           )}>
                             {metric.change}
                           </span>
                         </div>
                       </div>
-                      <div className={cn("p-3 rounded-xl bg-gradient-subtle group-hover:scale-110 transition-transform shadow-lg", metric.color)}>
-                        <metric.icon className="w-6 h-6" />
+                      <div className="p-3 rounded-xl bg-white/70 group-hover:scale-110 transition-transform shadow-lg">
+                        <metric.icon className="w-6 h-6 text-gray-700" />
                       </div>
                     </div>
-                    
-                    {/* Animated background */}
-                    <div className="absolute inset-0 bg-gradient-primary opacity-0 group-hover:opacity-5 transition-opacity rounded-lg pointer-events-none" />
                   </CardContent>
                 </Card>
               ))}
@@ -415,25 +418,31 @@ export function EnhancedDashboard() {
               "grid gap-4",
               dashboardSettings.compactMode ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
             )}>
-              {quickStats.map((stat) => (
+              {quickStats.map((stat, idx) => (
                 <Link key={stat.label} to={stat.link}>
-                  <Card className="shadow-erp-md hover:shadow-erp-lg transition-all duration-300 hover:scale-105 cursor-pointer group">
-                    <CardContent className={cn("p-4", dashboardSettings.compactMode && "p-3")}>
+                  <Card className={cn(
+                    "shadow-erp-md hover:shadow-erp-lg transition-all duration-300 hover:scale-105 cursor-pointer group border-0",
+                    idx === 0 && "bg-pink-100 text-pink-900",
+                    idx === 1 && "bg-indigo-100 text-indigo-900",
+                    idx === 2 && "bg-orange-100 text-orange-900",
+                    idx === 3 && "bg-red-100 text-red-900"
+                  )}>
+                    <CardContent className={cn("p-4", dashboardSettings.compactMode && "p-3")}> 
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm text-muted-foreground">{stat.label}</p>
-                          <p className={cn("font-bold", dashboardSettings.compactMode ? "text-xl" : "text-2xl")}>{stat.value}</p>
+                          <p className="text-sm opacity-90">{stat.label}</p>
+                          <p className={cn("font-bold text-2xl")}>{stat.value}</p>
                         </div>
-                        <div className={cn("p-3 rounded-lg group-hover:scale-110 transition-transform", stat.color)}>
-                          <stat.icon className="w-5 h-5 text-white" />
+                        <div className="p-3 rounded-lg bg-white/70 group-hover:scale-110 transition-transform">
+                          <stat.icon className="w-5 h-5 text-gray-700" />
                         </div>
                       </div>
                       <div className="mt-3 flex items-center justify-between">
                         <Progress 
                           value={(stat.value / stat.total) * 100} 
-                          className="h-2 flex-1 mr-2"
+                          className="h-2 flex-1 mr-2 bg-gray-200"
                         />
-                        <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                        <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-gray-700 transition-colors" />
                       </div>
                     </CardContent>
                   </Card>

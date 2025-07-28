@@ -16,6 +16,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
+import { calculateLifetimeValue, formatCurrency } from '@/lib/utils';
 
 interface Customer {
   id: string;
@@ -46,6 +47,7 @@ export function CustomerSearchSelect({
 }: CustomerSearchSelectProps) {
   const [open, setOpen] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customerLifetimeValues, setCustomerLifetimeValues] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -72,10 +74,49 @@ export function CustomerSearchSelect({
 
       if (error) throw error;
       setCustomers(data || []);
+      
+      // Fetch lifetime values for customers
+      if (data && data.length > 0) {
+        await fetchCustomerLifetimeValues(data);
+      }
     } catch (error) {
       console.error('Error fetching customers:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCustomerLifetimeValues = async (customerList: Customer[]) => {
+    try {
+      const customerIds = customerList.map(c => c.id);
+      const lifetimeValues: Record<string, number> = {};
+
+      // Fetch invoices for all customers
+      const { data: invoices, error: invoiceError } = await supabase
+        .from('invoices')
+        .select('customer_id, total_amount')
+        .in('customer_id', customerIds);
+
+      if (invoiceError) throw invoiceError;
+
+      // Fetch orders for all customers
+      const { data: orders, error: orderError } = await supabase
+        .from('orders')
+        .select('customer_id, final_amount')
+        .in('customer_id', customerIds);
+
+      if (orderError) throw orderError;
+
+      // Calculate lifetime value for each customer
+      customerIds.forEach(customerId => {
+        const customerInvoices = invoices?.filter(inv => inv.customer_id === customerId) || [];
+        const customerOrders = orders?.filter(ord => ord.customer_id === customerId) || [];
+        lifetimeValues[customerId] = calculateLifetimeValue(customerInvoices, customerOrders);
+      });
+
+      setCustomerLifetimeValues(lifetimeValues);
+    } catch (error) {
+      console.error('Error fetching customer lifetime values:', error);
     }
   };
 
@@ -156,6 +197,9 @@ export function CustomerSearchSelect({
                       {customer.email && (
                         <div className="text-xs text-muted-foreground">{customer.email}</div>
                       )}
+                      <div className="text-xs text-accent font-medium">
+                        LTV: {formatCurrency(customerLifetimeValues[customer.id] || 0)}
+                      </div>
                     </div>
                   </div>
                 </CommandItem>
