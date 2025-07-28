@@ -27,6 +27,7 @@ export interface Customer {
   lastOrderDate: Date;
   creditLimit: number;
   outstandingAmount: number;
+  totalBilledAmount: number;
 }
 
 export interface Product {
@@ -170,6 +171,12 @@ export function generateCustomers(count: number = 50): Customer[] {
     const loyaltyTier = totalOrders > 15 ? 'Gold' : totalOrders > 5 ? 'Silver' : 'Bronze';
     const orderVolume = totalOrders > 15 ? 'High' : totalOrders > 5 ? 'Medium' : 'Low';
     
+    // Calculate realistic billing amounts based on loyalty tier and order volume
+    const baseOrderValue = loyaltyTier === 'Gold' ? 45000 : loyaltyTier === 'Silver' ? 25000 : 12000;
+    const variance = Math.random() * 0.4 + 0.8; // 80% to 120% of base value
+    const avgOrderValue = Math.floor(baseOrderValue * variance);
+    const totalBilledAmount = Math.floor(totalOrders * avgOrderValue);
+    
     return {
       id: `customer_${i + 1}`,
       companyName,
@@ -185,7 +192,8 @@ export function generateCustomers(count: number = 50): Customer[] {
       totalOrders,
       lastOrderDate: new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000),
       creditLimit: Math.floor(Math.random() * 500000) + 50000,
-      outstandingAmount: Math.floor(Math.random() * 25000)
+      outstandingAmount: Math.floor(Math.random() * 25000),
+      totalBilledAmount
     };
   });
 }

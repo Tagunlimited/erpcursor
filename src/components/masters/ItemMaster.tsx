@@ -58,7 +58,11 @@ export function ItemMaster() {
       setItems(data || []);
     } catch (error) {
       console.error('Error fetching items:', error);
-      toast.error('Failed to fetch inventory items');
+      toast({
+        title: "Error",
+        description: "Failed to fetch inventory items",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -92,14 +96,20 @@ export function ItemMaster() {
           .eq('id', editingItem.id);
         
         if (error) throw error;
-        toast.success('Item updated successfully!');
+        toast({
+          title: "Success",
+          description: "Item updated successfully!",
+        });
       } else {
         const { error } = await supabase
           .from('inventory')
           .insert([itemData]);
         
         if (error) throw error;
-        toast.success('Item created successfully!');
+        toast({
+          title: "Success",
+          description: "Item created successfully!",
+        });
       }
 
       fetchItems();
@@ -119,7 +129,11 @@ export function ItemMaster() {
       });
     } catch (error) {
       console.error('Error saving item:', error);
-      toast.error('Failed to save item');
+      toast({
+        title: "Error",
+        description: "Failed to save item",
+        variant: "destructive",
+      });
     }
   };
 
@@ -148,11 +162,18 @@ export function ItemMaster() {
         .eq('id', id);
       
       if (error) throw error;
-      toast.success('Item deleted successfully!');
+      toast({
+        title: "Success",
+        description: "Item deleted successfully!",
+      });
       fetchItems();
     } catch (error) {
       console.error('Error deleting item:', error);
-      toast.error('Failed to delete item');
+      toast({
+        title: "Error",
+        description: "Failed to delete item",
+        variant: "destructive",
+      });
     }
   };
 

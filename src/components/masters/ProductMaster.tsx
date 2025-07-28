@@ -54,7 +54,11 @@ export function ProductMaster() {
       setProducts(data || []);
     } catch (error) {
       console.error('Error fetching products:', error);
-      toast.error('Failed to fetch products');
+      toast({
+        title: "Error",
+        description: "Failed to fetch products",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -86,14 +90,20 @@ export function ProductMaster() {
           .eq('id', editingProduct.id);
         
         if (error) throw error;
-        toast.success('Product updated successfully!');
+        toast({
+          title: "Success",
+          description: "Product updated successfully!",
+        });
       } else {
         const { error } = await supabase
           .from('products')
           .insert([productData]);
         
         if (error) throw error;
-        toast.success('Product created successfully!');
+        toast({
+          title: "Success",
+          description: "Product created successfully!",
+        });
       }
 
       fetchProducts();
@@ -111,7 +121,11 @@ export function ProductMaster() {
       });
     } catch (error) {
       console.error('Error saving product:', error);
-      toast.error('Failed to save product');
+      toast({
+        title: "Error",
+        description: "Failed to save product",
+        variant: "destructive",
+      });
     }
   };
 
@@ -138,11 +152,18 @@ export function ProductMaster() {
         .eq('id', id);
       
       if (error) throw error;
-      toast.success('Product deleted successfully!');
+      toast({
+        title: "Success",
+        description: "Product deleted successfully!",
+      });
       fetchProducts();
     } catch (error) {
       console.error('Error deleting product:', error);
-      toast.error('Failed to delete product');
+      toast({
+        title: "Error",
+        description: "Failed to delete product",
+        variant: "destructive",
+      });
     }
   };
 
