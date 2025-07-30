@@ -45,10 +45,7 @@ export default function ProfileSettingsPage() {
 
   // Mock rewards and recognition data
   const [rewards] = useState([
-    { id: 1, title: "Employee of the Month", date: "December 2024", icon: Trophy, color: "text-yellow-600" },
-    { id: 2, title: "Perfect Attendance", date: "November 2024", icon: Star, color: "text-blue-600" },
-    { id: 3, title: "Safety Champion", date: "October 2024", icon: Shield, color: "text-green-600" },
-    { id: 4, title: "Innovation Award", date: "September 2024", icon: Award, color: "text-purple-600" }
+    // ...existing code...
   ]);
 
   const handleInputChange = (field: string, value: string) => {
@@ -266,7 +263,7 @@ export default function ProfileSettingsPage() {
                     </div>
                     <div className="flex-1">
                       <h3 className="font-semibold text-lg">{reward.title}</h3>
-                      <p className="text-sm text-muted-foreground">{reward.date}</p>
+                      <p className="text-sm text-muted-foreground">{format(new Date(reward.date), 'dd-MMM-yy')}</p>
                     </div>
                   </div>
                 </CardContent>

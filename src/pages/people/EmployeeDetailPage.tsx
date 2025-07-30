@@ -297,7 +297,7 @@ const EmployeeDetailPage = () => {
                     <Calendar className="w-5 h-5 mr-3 text-primary" />
                     <div>
                       <p className="text-sm text-muted-foreground">Date of Birth</p>
-                      <span className="font-semibold">{format(new Date(employee.date_of_birth), 'dd-MMM-yyyy')}</span>
+                      <span className="font-semibold">{format(new Date(employee.date_of_birth), 'dd-MMM-yy')}</span>
                     </div>
                   </div>
                   
@@ -305,7 +305,7 @@ const EmployeeDetailPage = () => {
                     <Briefcase className="w-5 h-5 mr-3 text-primary" />
                     <div>
                       <p className="text-sm text-muted-foreground">Joining Date</p>
-                      <span className="font-semibold">{format(new Date(employee.joining_date), 'dd-MMM-yyyy')}</span>
+                      <span className="font-semibold">{format(new Date(employee.joining_date), 'dd-MMM-yy')}</span>
                     </div>
                   </div>
 

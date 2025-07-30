@@ -80,9 +80,6 @@ const sidebarItems: SidebarItem[] = [
     badgeColor: "bg-inventory",
     children: [
       { title: "Dashboard", url: "/inventory", icon: BarChart3 },
-      { title: "Product Master", url: "/inventory/products", icon: Package },
-      { title: "Item Master", url: "/inventory/items", icon: Package },
-      { title: "Warehouses", url: "/inventory/warehouses", icon: Building },
       { title: "Material Planning", url: "/inventory/planning", icon: ClipboardList }
     ]
   },

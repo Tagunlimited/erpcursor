@@ -250,7 +250,7 @@ const CustomerDetailPage = () => {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Lifetime Value</p>
-                  <p className="text-2xl font-bold">₹{formatCurrency(calculateLifetimeValue(invoices, orders))}</p>
+                  <p className="text-2xl font-bold">{formatCurrency(calculateLifetimeValue(invoices, orders))}</p>
                 </div>
               </div>
             </CardContent>

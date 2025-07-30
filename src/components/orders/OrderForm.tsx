@@ -372,8 +372,8 @@ export function OrderForm() {
 
       const orderData = {
         order_number: orderNumber,
-        order_date: formData.order_date.toISOString(),
-        expected_delivery_date: formData.expected_delivery_date.toISOString(),
+        order_date: format(formData.order_date, 'dd-MMM-yy'),
+        expected_delivery_date: format(formData.expected_delivery_date, 'dd-MMM-yy'),
         customer_id: formData.customer_id,
         sales_manager: formData.sales_manager,
         total_amount: subtotal,
@@ -454,7 +454,7 @@ export function OrderForm() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Order ID</Label>
-                <Input value="TUC/25-26/JAN/XXX (Auto-generated)" disabled />
+                <Input value={format(formData.order_date, 'dd-MMM-yy') + " (Auto-generated)"} disabled />
               </div>
               
               <div className="space-y-2">

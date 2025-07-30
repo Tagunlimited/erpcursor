@@ -1,3 +1,4 @@
+import { format } from 'date-fns';
 import { ErpLayout } from "@/components/ErpLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -85,7 +86,7 @@ const OrdersPage = () => {
         order.order_number?.toLowerCase().includes(term) ||
         order.customer?.company_name?.toLowerCase().includes(term) ||
         order.status?.toLowerCase().includes(term) ||
-        (order.order_date && new Date(order.order_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }).toLowerCase().includes(term)) ||
+        (order.order_date && format(new Date(order.order_date), 'dd-MMM-yy').toLowerCase().includes(term)) ||
         (order.final_amount !== undefined && order.final_amount.toString().toLowerCase().includes(term)) ||
         (order.balance_amount !== undefined && order.balance_amount.toString().toLowerCase().includes(term))
       );
